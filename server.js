@@ -1,8 +1,9 @@
+require('dotenv').config(); // ✅ PRIMEIRA LINHA
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const app = express();
-const PORT = process.env.PORT || 5000; // ✅ Correção aqui
+const PORT = process.env.PORT || 5000;
 const db = require('./db');
 
 app.use(cors());
