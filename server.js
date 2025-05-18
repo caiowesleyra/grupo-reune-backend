@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000; // ✅ Correção aqui
 const db = require('./db');
 
 app.use(cors());
@@ -28,14 +28,9 @@ app.post('/api/cadastrar', async (req, res) => {
         return res.status(500).json({ erro: 'Erro ao cadastrar usuário.' });
       }
 
-      // ✅ Resposta completa esperada pelo frontend
       res.status(200).json({
         success: true,
-        usuario: {
-          nome,
-          email,
-          telefone
-        }
+        usuario: { nome, email, telefone }
       });
     });
   } catch (error) {
@@ -44,10 +39,9 @@ app.post('/api/cadastrar', async (req, res) => {
   }
 });
 
-// ✅ ROTA DE LOGIN COM LOGS DE DEPURAÇÃO
+// ✅ ROTA DE LOGIN
 app.post('/api/login', (req, res) => {
   const { email, senha } = req.body;
-
   console.log('🔐 Tentando login com:', email);
 
   const sql = 'SELECT * FROM usuarios WHERE email = ?';
@@ -89,10 +83,9 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// ✅ ROTA DE CONTATO – recebe nome, email, mensagem
+// ✅ ROTA DE CONTATO
 app.post('/api/contato', (req, res) => {
   const { nome, email, mensagem } = req.body;
-
   const sql = 'INSERT INTO contatos (nome, email, mensagem) VALUES (?, ?, ?)';
   const values = [nome, email, mensagem];
 
@@ -106,7 +99,7 @@ app.post('/api/contato', (req, res) => {
   });
 });
 
-// ✅ NOVA ROTA – LISTAR CONTATOS
+// ✅ ROTA PARA LISTAR CONTATOS
 app.get('/api/contatos', (req, res) => {
   const sql = 'SELECT * FROM contatos ORDER BY id DESC';
 
@@ -121,5 +114,5 @@ app.get('/api/contatos', (req, res) => {
 
 // INICIAR SERVIDOR
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
