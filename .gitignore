@@ -1,0 +1,8 @@
+# Ignorar a pasta de dependências
+node_modules/
+
+# Ignorar variáveis sensíveis
+.env
+
+# Outros arquivos temporários
+.DS_Store
