@@ -6,7 +6,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const db = require('./db');
 
-app.use(cors());
+// ✅ CORS CONFIGURADO CORRETAMENTE
+const corsOptions = {
+  origin: ["https://site-grupo-reune.vercel.app", "http://localhost:3000"],
+  methods: ["GET", "POST"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ROTA PRINCIPAL
@@ -113,7 +120,6 @@ app.get('/api/contatos', (req, res) => {
   });
 });
 
-// INICIAR SERVIDOR
 // INICIAR SERVIDOR - CORRETO PARA RAILWAY
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${PORT}`);
