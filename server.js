@@ -127,5 +127,5 @@ app.get('/api/contatos', (req, res) => {
 
 // INICIAR SERVIDOR - CORRETO PARA RAILWAY
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta`, PORT);
 });
