@@ -6,11 +6,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const db = require('./db');
 
-// ✅ CORS CONFIGURADO CORRETAMENTE COM NOVO DOMÍNIO DA VERCEL
+// ✅ CORS CONFIGURADO COM TODOS OS DOMÍNIOS NECESSÁRIOS
 const corsOptions = {
   origin: [
     "https://site-grupo-reune.vercel.app",
     "https://site-grupo-reune-git-deploy-fix-caio-wesleys-projects.vercel.app",
+    "https://www.gruporeune.com",
     "http://localhost:3000"
   ],
   methods: ["GET", "POST"],
