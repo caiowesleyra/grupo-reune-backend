@@ -180,6 +180,45 @@ app.get('/api/contatos', (req, res) => {
   });
 });
 
+// ✅ ROTA PARA INSERIR O VALOR DO PRÊMIO DO DIA (feito manualmente pelo admin)
+app.post('/api/premio-do-dia', (req, res) => {
+  const { valor_total } = req.body;
+
+  if (!valor_total) {
+    return res.status(400).json({ erro: "O valor_total é obrigatório." });
+  }
+
+  const sql = `INSERT INTO premio_dia (valor_total) VALUES (?)`;
+
+  db.query(sql, [valor_total], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao inserir valor do prêmio:", err);
+      return res.status(500).json({ erro: "Erro ao salvar valor do prêmio do dia." });
+    }
+
+    res.status(200).json({ mensagem: "Valor do prêmio do dia salvo com sucesso!" });
+  });
+});
+
+// ✅ ROTA PARA CONSULTAR O ÚLTIMO VALOR DO PRÊMIO DO DIA
+app.get('/api/premio-do-dia', (req, res) => {
+  const sql = `
+    SELECT valor_total FROM premio_dia
+    ORDER BY data_registro DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar prêmio do dia:", err);
+      return res.status(500).json({ erro: "Erro ao buscar prêmio do dia." });
+    }
+
+    const valor_total = results.length > 0 ? results[0].valor_total : 0;
+    res.status(200).json({ valor_total });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
