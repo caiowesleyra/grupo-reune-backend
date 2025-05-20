@@ -54,6 +54,27 @@ app.get('/api/criar-tabela-cotas', (req, res) => {
   });
 });
 
+// ✅ ROTA TEMPORÁRIA PARA CRIAR A TABELA "premio_dia"
+app.get('/api/criar-tabela-premio', (req, res) => {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS premio_dia (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      valor_total DECIMAL(10,2) NOT NULL,
+      data_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao criar a tabela 'premio_dia':", err);
+      return res.status(500).json({ erro: "Erro ao criar tabela 'premio_dia'." });
+    }
+
+    console.log("✅ Tabela 'premio_dia' criada com sucesso!");
+    res.status(200).json({ mensagem: "Tabela 'premio_dia' criada com sucesso!" });
+  });
+});
+
 // ✅ ROTA PARA CONSULTAR TOTAL DE COTAS APROVADAS DE UM USUÁRIO
 app.get('/api/total-cotas/:id', (req, res) => {
   const id_usuario = req.params.id;
@@ -68,6 +89,25 @@ app.get('/api/total-cotas/:id', (req, res) => {
     if (err) {
       console.error("❌ Erro ao buscar cotas:", err);
       return res.status(500).json({ erro: "Erro ao buscar total de cotas." });
+    }
+
+    const total = results[0].total || 0;
+    res.status(200).json({ total });
+  });
+});
+
+// ✅ ROTA PARA CONSULTAR TOTAL DE COTAS GERAL (TODOS)
+app.get('/api/total-cotas-geral', (req, res) => {
+  const sql = `
+    SELECT SUM(qtd_cotas) AS total
+    FROM cotas
+    WHERE status = 'aprovado'
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar cotas gerais:", err);
+      return res.status(500).json({ erro: "Erro ao buscar total geral de cotas." });
     }
 
     const total = results[0].total || 0;
