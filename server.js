@@ -32,6 +32,28 @@ app.get('/', (req, res) => {
   res.send('Servidor do GRUPO REUNE está funcionando!');
 });
 
+// ✅ ROTA TEMPORÁRIA PARA CRIAR A TABELA "cotas"
+app.get('/api/criar-tabela-cotas', (req, res) => {
+  const sql = `
+    CREATE TABLE cotas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      id_usuario INT NOT NULL,
+      qtd_cotas INT NOT NULL,
+      status ENUM('pendente', 'aprovado', 'rejeitado') DEFAULT 'pendente',
+      data_contribuicao DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao criar tabela:", err);
+      return res.status(500).json({ erro: "Erro ao criar tabela." });
+    }
+    console.log("✅ Tabela 'cotas' criada!");
+    res.status(200).json({ mensagem: "Tabela 'cotas' criada com sucesso!" });
+  });
+});
+
 // CADASTRO
 app.post('/api/cadastrar', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
