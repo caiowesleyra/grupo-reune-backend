@@ -54,6 +54,27 @@ app.get('/api/criar-tabela-cotas', (req, res) => {
   });
 });
 
+// ✅ ROTA PARA CONSULTAR TOTAL DE COTAS APROVADAS DE UM USUÁRIO
+app.get('/api/total-cotas/:id', (req, res) => {
+  const id_usuario = req.params.id;
+
+  const sql = `
+    SELECT SUM(qtd_cotas) AS total
+    FROM cotas
+    WHERE id_usuario = ? AND status = 'aprovado'
+  `;
+
+  db.query(sql, [id_usuario], (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar cotas:", err);
+      return res.status(500).json({ erro: "Erro ao buscar total de cotas." });
+    }
+
+    const total = results[0].total || 0;
+    res.status(200).json({ total });
+  });
+});
+
 // CADASTRO
 app.post('/api/cadastrar', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
