@@ -115,25 +115,26 @@ app.get('/api/total-cotas-geral', (req, res) => {
   });
 });
 
-// ✅ ROTA PARA OBTER O SALDO DIÁRIO DE COMISSÃO DO COLABORADOR
-app.get("/api/saldo-colaborador/:id", async (req, res) => {
+// ✅ ROTA PARA OBTER O SALDO DIÁRIO DE COMISSÃO DO COLABORADOR (SEM async/await)
+app.get("/api/saldo-colaborador/:id", (req, res) => {
   const { id } = req.params;
+  const dataHoje = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
 
-  try {
-    const dataHoje = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  const sql = `
+    SELECT SUM(valor_contribuicao * 0.10) AS saldo
+    FROM indicacoes
+    WHERE indicou_id = ? AND data_contribuicao = ?
+  `;
 
-    const [result] = await db.query(
-      "SELECT SUM(valor_contribuicao * 0.10) AS saldo FROM indicacoes WHERE indicou_id = ? AND data_contribuicao = ?",
-      [id, dataHoje]
-    );
+  db.query(sql, [id, dataHoje], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao buscar saldo do colaborador:", err);
+      return res.status(500).json({ erro: "Erro ao buscar saldo do colaborador" });
+    }
 
     const saldo = result[0].saldo || 0;
-
     res.json({ saldo: parseFloat(saldo.toFixed(2)) });
-  } catch (err) {
-    console.error("Erro ao buscar saldo do colaborador:", err);
-    res.status(500).json({ erro: "Erro ao buscar saldo do colaborador" });
-  }
+  });
 });
 
 // CADASTRO
