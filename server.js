@@ -241,6 +241,43 @@ app.get('/api/premio-do-dia', (req, res) => {
   });
 });
 
+// ✅ ROTA PARA CADASTRAR UM NOVO INDICADO
+app.post("/api/indicar", async (req, res) => {
+  const { nome, email, whatsapp, cpf, senha } = req.body;
+
+  if (!nome || !email || !whatsapp || !senha) {
+    return res.status(400).json({ erro: "Campos obrigatórios não preenchidos." });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(senha, 10);
+
+    const sql = `
+      INSERT INTO indicacoes (nome, email, whatsapp, cpf, senha, data_contribuicao, status, indicou_id)
+      VALUES (?, ?, ?, ?, ?, NOW(), 'pendente', ?)
+    `;
+
+    const usuarioLogado = req.headers["x-user-id"];
+    if (!usuarioLogado) {
+      return res.status(401).json({ erro: "ID do usuário logado ausente." });
+    }
+
+    const values = [nome, email, whatsapp, cpf, hashed, usuarioLogado];
+
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        console.error("❌ Erro ao cadastrar indicado:", err);
+        return res.status(500).json({ erro: "Erro ao cadastrar indicado." });
+      }
+
+      res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
+    });
+  } catch (error) {
+    console.error("❌ Erro ao criptografar senha:", error);
+    res.status(500).json({ erro: "Erro interno." });
+  }
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
