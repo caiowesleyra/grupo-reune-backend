@@ -241,28 +241,28 @@ app.get('/api/premio-do-dia', (req, res) => {
   });
 });
 
-// ✅ ROTA PARA CADASTRAR UM INDICADO
+// ✅ ROTA PARA CADASTRAR UM NOVO INDICADO
 app.post("/api/indicar", async (req, res) => {
   const { nome, email, whatsapp, cpf, senha } = req.body;
-  const indicou_id = req.headers["x-user-id"];
-
-  if (!indicou_id) {
-    return res.status(401).json({ erro: "Usuário logado não identificado." });
-  }
 
   if (!nome || !email || !whatsapp || !senha) {
-    return res.status(400).json({ erro: "Preencha todos os campos obrigatórios." });
+    return res.status(400).json({ erro: "Campos obrigatórios não preenchidos." });
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(senha, 10);
+    const hashed = await bcrypt.hash(senha, 10);
 
     const sql = `
-      INSERT INTO indicacoes (nome, email, whatsapp, cpf, senha, indicou_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO indicacoes (nome, email, whatsapp, cpf, senha, data_contribuicao, status, indicou_id)
+      VALUES (?, ?, ?, ?, ?, NOW(), 'pendente', ?)
     `;
 
-    const values = [nome, email, whatsapp, cpf || null, hashedPassword, indicou_id];
+    const usuarioLogado = req.headers["x-user-id"];
+    if (!usuarioLogado) {
+      return res.status(401).json({ erro: "ID do usuário logado ausente." });
+    }
+
+    const values = [nome, email, whatsapp, cpf, hashed, usuarioLogado];
 
     db.query(sql, values, (err, result) => {
       if (err) {
@@ -273,8 +273,8 @@ app.post("/api/indicar", async (req, res) => {
       res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
     });
   } catch (error) {
-    console.error("❌ Erro geral ao cadastrar indicado:", error);
-    res.status(500).json({ erro: "Erro interno ao cadastrar indicado." });
+    console.error("❌ Erro ao criptografar senha:", error);
+    res.status(500).json({ erro: "Erro interno." });
   }
 });
 
