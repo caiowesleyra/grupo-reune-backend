@@ -115,6 +115,27 @@ app.get('/api/total-cotas-geral', (req, res) => {
   });
 });
 
+// ✅ ROTA PARA OBTER O SALDO DIÁRIO DE COMISSÃO DO COLABORADOR
+app.get("/api/saldo-colaborador/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const dataHoje = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+
+    const [result] = await db.query(
+      "SELECT SUM(valor_contribuicao * 0.10) AS saldo FROM indicacoes WHERE indicou_id = ? AND data_contribuicao = ?",
+      [id, dataHoje]
+    );
+
+    const saldo = result[0].saldo || 0;
+
+    res.json({ saldo: parseFloat(saldo.toFixed(2)) });
+  } catch (err) {
+    console.error("Erro ao buscar saldo do colaborador:", err);
+    res.status(500).json({ erro: "Erro ao buscar saldo do colaborador" });
+  }
+});
+
 // CADASTRO
 app.post('/api/cadastrar', async (req, res) => {
   const { nome, email, telefone, senha } = req.body;
