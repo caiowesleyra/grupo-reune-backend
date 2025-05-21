@@ -16,8 +16,8 @@ if (!PORT) {
 const corsOptions = {
   origin: [
     "https://site-grupo-reune.vercel.app",
-    "https://site-grupo-reune-git-deploy-fix-caio-wesleys-projects.vercel.app",
     "https://www.gruporeune.com",
+    "https://painel.gruporeune.com",
     "http://localhost:3000"
   ],
   methods: ["GET", "POST"],
