@@ -487,6 +487,78 @@ app.post("/api/atualizar-saldo-disponivel/:id", async (req, res) => {
   }
 });
 
+// ✅ ROTA PARA ACUMULAR AUTOMATICAMENTE O SALDO TOTAL DISPONÍVEL
+app.post("/api/atualizar-saldo", async (req, res) => {
+  const dataHoje = new Date().toISOString().slice(0, 10);
+
+  const sqlUsuarios = "SELECT id FROM usuarios";
+  const sqlPremioDia = `
+    SELECT valor_total FROM premio_dia
+    ORDER BY data_registro DESC LIMIT 1
+  `;
+
+  db.query(sqlUsuarios, async (err, usuarios) => {
+    if (err) return res.status(500).json({ erro: "Erro ao buscar usuários" });
+
+    db.query(sqlPremioDia, async (err2, resultadoPremio) => {
+      if (err2) return res.status(500).json({ erro: "Erro ao buscar prêmio do dia" });
+
+      const premioTotal = resultadoPremio[0]?.valor_total || 0;
+
+      for (const user of usuarios) {
+        const userId = user.id;
+
+        const sqlComissao = `
+          SELECT SUM(valor_contribuicao * 0.10) AS comissao
+          FROM indicacoes
+          WHERE indicou_id = ? AND data_contribuicao = ?
+        `;
+
+        db.query(sqlComissao, [userId, dataHoje], (err3, resultadoComissao) => {
+          if (err3) return;
+
+          const comissao = resultadoComissao[0]?.comissao || 0;
+
+          const sqlTotalCotas = `
+            SELECT SUM(qtd_cotas) AS total
+            FROM cotas
+            WHERE status = 'aprovado'
+          `;
+          const sqlCotasUsuario = `
+            SELECT SUM(qtd_cotas) AS total
+            FROM cotas
+            WHERE id_usuario = ? AND status = 'aprovado'
+          `;
+
+          db.query(sqlTotalCotas, (err4, resultGeral) => {
+            if (err4) return;
+            db.query(sqlCotasUsuario, [userId], (err5, resultUser) => {
+              if (err5) return;
+
+              const cotasGeral = resultGeral[0]?.total || 0;
+              const cotasUser = resultUser[0]?.total || 0;
+              const percentual = cotasGeral > 0 ? cotasUser / cotasGeral : 0;
+              const premioIndividual = premioTotal * percentual;
+
+              const valorFinal = premioIndividual + comissao;
+
+              const sqlAtualizarSaldo = `
+                INSERT INTO saldos_usuario (id_usuario, saldo, atualizado_em)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE saldo = saldo + VALUES(saldo), atualizado_em = VALUES(atualizado_em)
+              `;
+
+              db.query(sqlAtualizarSaldo, [userId, valorFinal, dataHoje], () => {});
+            });
+          });
+        });
+      }
+
+      res.status(200).json({ mensagem: "Saldo atualizado para todos os usuários." });
+    });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
