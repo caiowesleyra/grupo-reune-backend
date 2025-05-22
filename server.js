@@ -559,6 +559,45 @@ app.post("/api/atualizar-saldo", async (req, res) => {
   });
 });
 
+// ✅ ROTA PARA SALVAR O VALOR TOTAL DO LUCRO DOS ESPECIALISTAS (manual)
+app.post("/api/lucro-especialistas", (req, res) => {
+  const { valor_total } = req.body;
+
+  if (!valor_total || typeof valor_total !== "number") {
+    return res.status(400).json({ erro: "Valor inválido." });
+  }
+
+  const sql = `INSERT INTO lucro_especialistas (valor_total) VALUES (?)`;
+
+  db.query(sql, [valor_total], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao salvar lucro:", err);
+      return res.status(500).json({ erro: "Erro ao salvar lucro dos especialistas." });
+    }
+
+    res.status(200).json({ mensagem: "✅ Lucro dos especialistas salvo com sucesso!" });
+  });
+});
+
+// ✅ ROTA PARA CONSULTAR O ÚLTIMO LUCRO DOS ESPECIALISTAS
+app.get("/api/lucro-especialistas", (req, res) => {
+  const sql = `
+    SELECT valor_total FROM lucro_especialistas
+    ORDER BY data_registro DESC
+    LIMIT 1
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar lucro:", err);
+      return res.status(500).json({ erro: "Erro ao buscar lucro dos especialistas." });
+    }
+
+    const valor_total = results.length > 0 ? results[0].valor_total : 0;
+    res.status(200).json({ valor_total });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
