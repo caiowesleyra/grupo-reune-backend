@@ -368,6 +368,49 @@ app.get("/api/iniciar-saldos", (req, res) => {
   });
 });
 
+// ✅ ROTA PARA ATUALIZAR SALDO DO USUÁRIO (somar valor recebido)
+app.post("/api/atualizar-saldo", (req, res) => {
+  const { id_usuario, valor } = req.body;
+
+  if (!id_usuario || typeof valor !== "number") {
+    return res.status(400).json({ erro: "Dados inválidos." });
+  }
+
+  const sql = `
+    INSERT INTO saldos_usuario (id_usuario, saldo, atualizado_em)
+    VALUES (?, ?, NOW())
+    ON DUPLICATE KEY UPDATE
+      saldo = saldo + VALUES(saldo),
+      atualizado_em = NOW()
+  `;
+
+  db.query(sql, [id_usuario, valor], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao atualizar saldo:", err);
+      return res.status(500).json({ erro: "Erro ao atualizar saldo." });
+    }
+
+    res.status(200).json({ mensagem: "✅ Saldo atualizado com sucesso!" });
+  });
+});
+
+// ✅ ROTA PARA OBTER SALDO DISPONÍVEL DO USUÁRIO
+app.get("/api/saldo-disponivel/:id", (req, res) => {
+  const id_usuario = req.params.id;
+
+  const sql = "SELECT saldo FROM saldos_usuario WHERE id_usuario = ?";
+
+  db.query(sql, [id_usuario], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao buscar saldo disponível:", err);
+      return res.status(500).json({ erro: "Erro ao buscar saldo disponível." });
+    }
+
+    const saldo = result.length > 0 ? result[0].saldo : 0;
+    res.status(200).json({ saldo });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
