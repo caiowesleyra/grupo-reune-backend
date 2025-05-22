@@ -347,6 +347,27 @@ app.post("/api/saldo-disponivel/deduzir", (req, res) => {
   });
 });
 
+// INICIAR SALDOS
+app.get("/api/iniciar-saldos", (req, res) => {
+  const sql = `
+    INSERT INTO saldos_usuario (id_usuario, saldo, atualizado_em)
+    SELECT u.id, 0.00, NOW()
+    FROM usuarios u
+    WHERE NOT EXISTS (
+      SELECT 1 FROM saldos_usuario s WHERE s.id_usuario = u.id
+    )
+  `;
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao iniciar saldos:", err);
+      return res.status(500).json({ erro: "Erro ao iniciar saldos dos usuários." });
+    }
+
+    res.status(200).json({ mensagem: "✅ Saldos iniciados com sucesso!", inseridos: result.affectedRows });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
