@@ -430,6 +430,63 @@ app.get("/api/saldo-disponivel/:id", (req, res) => {
   });
 });
 
+// ✅ ROTA PARA ATUALIZAR O SALDO DISPONÍVEL PARA SAQUE
+app.post("/api/atualizar-saldo-disponivel/:id", async (req, res) => {
+  const id_usuario = req.params.id;
+
+  try {
+    // Buscar o valor do prêmio do dia
+    const premioSql = `SELECT valor_total FROM premio_dia ORDER BY data_registro DESC LIMIT 1`;
+    const [premioResult] = await db.promise().query(premioSql);
+    const premio = premioResult.length > 0 ? parseFloat(premioResult[0].valor_total) : 0;
+
+    // Buscar comissão de hoje (10% das indicações feitas HOJE)
+    const hoje = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+    const comissaoSql = `
+      SELECT SUM(valor_contribuicao * 0.10) AS comissao
+      FROM indicacoes
+      WHERE indicou_id = ? AND data_contribuicao = ?
+    `;
+    const [comissaoResult] = await db.promise().query(comissaoSql, [id_usuario, hoje]);
+    const comissao = comissaoResult[0].comissao || 0;
+
+    const valorTotal = premio + comissao;
+
+    // Verificar se já existe registro de saldo
+    const [existe] = await db.promise().query(
+      `SELECT * FROM saldos_usuario WHERE id_usuario = ?`,
+      [id_usuario]
+    );
+
+    if (existe.length > 0) {
+      // Atualizar saldo somando ao valor atual
+      const saldoAtual = parseFloat(existe[0].saldo);
+      const novoSaldo = saldoAtual + valorTotal;
+
+      await db.promise().query(
+        `UPDATE saldos_usuario SET saldo = ?, atualizado_em = NOW() WHERE id_usuario = ?`,
+        [novoSaldo, id_usuario]
+      );
+    } else {
+      // Inserir novo saldo
+      await db.promise().query(
+        `INSERT INTO saldos_usuario (id_usuario, saldo, atualizado_em) VALUES (?, ?, NOW())`,
+        [id_usuario, valorTotal]
+      );
+    }
+
+    res.status(200).json({
+      mensagem: "Saldo atualizado com sucesso!",
+      premio,
+      comissao,
+      acumulado: valorTotal,
+    });
+  } catch (error) {
+    console.error("❌ Erro ao atualizar saldo:", error);
+    res.status(500).json({ erro: "Erro ao atualizar saldo disponível para saque." });
+  }
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
