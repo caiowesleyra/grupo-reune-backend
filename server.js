@@ -278,6 +278,75 @@ app.post("/api/indicar", async (req, res) => {
   }
 });
 
+// Rota para consultar o saldo total disponível para saque
+app.get("/api/saldo-disponivel/:id_usuario", (req, res) => {
+  const { id_usuario } = req.params;
+
+  const sql = "SELECT saldo FROM saldos_usuario WHERE id_usuario = ?";
+
+  db.query(sql, [id_usuario], (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar saldo disponível:", err);
+      return res.status(500).json({ erro: "Erro ao buscar saldo." });
+    }
+
+    const saldo = results.length > 0 ? results[0].saldo : 0;
+    res.status(200).json({ saldo });
+  });
+});
+
+// Rota para adicionar valor ao saldo (tanto do prêmio quanto da comissão)
+app.post("/api/saldo-disponivel/adicionar", (req, res) => {
+  const { id_usuario, valor } = req.body;
+
+  if (!id_usuario || !valor) {
+    return res.status(400).json({ erro: "id_usuario e valor são obrigatórios." });
+  }
+
+  const sql = `
+    INSERT INTO saldos_usuario (id_usuario, saldo)
+    VALUES (?, ?)
+    ON DUPLICATE KEY UPDATE saldo = saldo + VALUES(saldo), atualizado_em = NOW()
+  `;
+
+  db.query(sql, [id_usuario, valor], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao adicionar saldo:", err);
+      return res.status(500).json({ erro: "Erro ao adicionar saldo." });
+    }
+
+    res.status(200).json({ mensagem: "Saldo atualizado com sucesso!" });
+  });
+});
+
+// Rota para deduzir valor do saldo ao fazer saque
+app.post("/api/saldo-disponivel/deduzir", (req, res) => {
+  const { id_usuario, valor } = req.body;
+
+  if (!id_usuario || !valor) {
+    return res.status(400).json({ erro: "id_usuario e valor são obrigatórios." });
+  }
+
+  const sql = `
+    UPDATE saldos_usuario
+    SET saldo = saldo - ?, atualizado_em = NOW()
+    WHERE id_usuario = ? AND saldo >= ?
+  `;
+
+  db.query(sql, [valor, id_usuario, valor], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao deduzir saldo:", err);
+      return res.status(500).json({ erro: "Erro ao deduzir saldo." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ erro: "Saldo insuficiente ou usuário não encontrado." });
+    }
+
+    res.status(200).json({ mensagem: "Saldo deduzido com sucesso!" });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
