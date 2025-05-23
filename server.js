@@ -243,6 +243,7 @@ app.get('/api/premio-do-dia', (req, res) => {
 
 // ✅ ROTA PARA CADASTRAR UM NOVO INDICADO
 app.post("/api/indicar", async (req, res) => {
+  console.log("✅ Rota de cadastro de indicado chamada");
   const { nome, email, whatsapp, cpf, senha } = req.body;
 
   if (!nome || !email || !whatsapp || !senha) {
@@ -254,7 +255,7 @@ app.post("/api/indicar", async (req, res) => {
 
     const sql = `
       INSERT INTO indicacoes (nome, email, whatsapp, cpf, senha, data_contribuicao, status, indicou_id)
-      VALUES (?, ?, ?, ?, ?, NOW(), 'pendente', ?)
+      VALUES (?, ?, ?, ?, ?, NOW(), 'pendente', 1)
     `;
 
     const usuarioLogado = req.headers["x-user-id"];
@@ -265,13 +266,16 @@ app.post("/api/indicar", async (req, res) => {
     const values = [nome, email, whatsapp, cpf, hashed, usuarioLogado];
 
     db.query(sql, values, (err, result) => {
-      if (err) {
-        console.error("❌ Erro ao cadastrar indicado:", err);
-        return res.status(500).json({ erro: "Erro ao cadastrar indicado." });
-      }
-
-      res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
+  if (err) {
+    console.error(`❌ Erro ao cadastrar indicado:`, err);
+    return res.status(500).json({
+      erro: "Erro ao cadastrar indicado.",
+      detalhes: err.sqlMessage || err.message || err
     });
+  }
+
+  res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
+});
   } catch (error) {
     console.error("❌ Erro ao criptografar senha:", error);
     res.status(500).json({ erro: "Erro interno." });
@@ -538,23 +542,31 @@ app.post("/api/atualizar-saldo", async (req, res) => {
               const cotasGeral = resultGeral[0]?.total || 0;
               const cotasUser = resultUser[0]?.total || 0;
               const percentual = cotasGeral > 0 ? cotasUser / cotasGeral : 0;
-              const premioIndividual = premioTotal * percentual;
-
+              const premioIndividual = parseFloat((premioTotal * percentual).toFixed(2));
               const valorFinal = premioIndividual + comissao;
 
+              // Atualizar saldo geral
               const sqlAtualizarSaldo = `
                 INSERT INTO saldos_usuario (id_usuario, saldo, atualizado_em)
                 VALUES (?, ?, ?)
                 ON DUPLICATE KEY UPDATE saldo = saldo + VALUES(saldo), atualizado_em = VALUES(atualizado_em)
               `;
+              db.query(sqlAtualizarSaldo, [userId, valorFinal, dataHoje]);
 
-              db.query(sqlAtualizarSaldo, [userId, valorFinal, dataHoje], () => {});
+              // Registrar prêmio individual na tabela premios_recebidos
+              if (premioIndividual > 0) {
+                const sqlPremio = `
+                  INSERT INTO premios_recebidos (id_usuario, valor, data_registro)
+                  VALUES (?, ?, ?)
+                `;
+                db.query(sqlPremio, [userId, premioIndividual, dataHoje]);
+              }
             });
           });
         });
       }
 
-      res.status(200).json({ mensagem: "Saldo atualizado para todos os usuários." });
+      res.status(200).json({ mensagem: "Saldo e prêmios atualizados para todos os usuários." });
     });
   });
 });
@@ -595,6 +607,50 @@ app.get("/api/lucro-especialistas", (req, res) => {
 
     const valor_total = results.length > 0 ? results[0].valor_total : 0;
     res.status(200).json({ valor_total });
+  });
+});
+
+// ✅ ROTA PARA REGISTRAR O PRÊMIO INDIVIDUAL DE CADA USUÁRIO
+app.post("/api/registrar-premio", async (req, res) => {
+  const { id_usuario, valor } = req.body;
+
+  if (!id_usuario || typeof valor !== "number") {
+    return res.status(400).json({ erro: "Dados inválidos." });
+  }
+
+  const sql = `
+    INSERT INTO premios_recebidos (id_usuario, valor, data_registro)
+    VALUES (?, ?, CURDATE())
+  `;
+
+  db.query(sql, [id_usuario, valor], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao registrar prêmio recebido:", err);
+      return res.status(500).json({ erro: "Erro ao registrar prêmio." });
+    }
+
+    res.status(200).json({ mensagem: "✅ Prêmio registrado com sucesso!" });
+  });
+});
+
+// ✅ ROTA PARA CONSULTAR O TOTAL ACUMULADO DE PRÊMIOS DO USUÁRIO
+app.get("/api/premios-acumulados/:id", (req, res) => {
+  const id_usuario = req.params.id;
+
+  const sql = `
+    SELECT SUM(valor) AS total
+    FROM premios_recebidos
+    WHERE id_usuario = ?
+  `;
+
+  db.query(sql, [id_usuario], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao buscar prêmios acumulados:", err);
+      return res.status(500).json({ erro: "Erro ao buscar prêmios acumulados." });
+    }
+
+    const total = result[0]?.total || 0;
+    res.status(200).json({ total });
   });
 });
 
