@@ -194,6 +194,25 @@ app.post('/api/contato', (req, res) => {
   });
 });
 
+// Endpoint para buscar usuário por ID
+app.get('/api/usuarios/:id', (req, res) => {
+  const id = req.params.id;
+  const sql = 'SELECT id, nome, email, telefone AS whatsapp, cpf, status FROM usuarios WHERE id = ?';
+
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error('Erro ao buscar usuário:', err);
+      return res.status(500).json({ erro: 'Erro ao buscar usuário' });
+    }
+
+    if (results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.status(404).json({ erro: 'Usuário não encontrado' });
+    }
+  });
+});
+
 // LISTAR CONTATOS
 app.get('/api/contatos', (req, res) => {
   db.query('SELECT * FROM contatos ORDER BY id DESC', (err, results) => {
