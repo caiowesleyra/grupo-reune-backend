@@ -654,6 +654,26 @@ app.get("/api/premios-acumulados/:id", (req, res) => {
   });
 });
 
+// ✅ ROTA PARA OBTER DADOS COMPLETOS DE UM USUÁRIO
+app.get('/api/usuario/:id', (req, res) => {
+  const id = req.params.id;
+
+  const sql = `SELECT id, nome, email, telefone, status, whatsapp, cpf FROM usuarios WHERE id = ?`;
+
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao buscar dados do usuário:", err);
+      return res.status(500).json({ erro: "Erro ao buscar dados do usuário." });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ erro: "Usuário não encontrado." });
+    }
+
+    res.status(200).json({ usuario: result[0] });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
