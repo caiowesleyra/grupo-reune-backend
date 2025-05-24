@@ -693,6 +693,26 @@ app.get('/api/usuario/:id', (req, res) => {
   });
 });
 
+// Endpoint para buscar total de indicados diretos de um usuário
+app.get('/api/indicados-diretos/:idUsuario', (req, res) => {
+  const idUsuario = req.params.idUsuario;
+  const sql = 'SELECT COUNT(*) AS total FROM usuarios WHERE id_indicador = ?';
+  db.query(sql, [idUsuario], (err, result) => {
+    if (err) return res.status(500).json({ erro: 'Erro ao buscar indicados diretos' });
+    res.json({ total: result[0].total });
+  });
+});
+
+// Endpoint para buscar saldo total de comissões diretas
+app.get('/api/saldo-comissoes/:idUsuario', (req, res) => {
+  const idUsuario = req.params.idUsuario;
+  const sql = 'SELECT SUM(valor_comissao) AS total FROM comissoes WHERE id_usuario = ? AND tipo = "direta"';
+  db.query(sql, [idUsuario], (err, result) => {
+    if (err) return res.status(500).json({ erro: 'Erro ao buscar saldo de comissões' });
+    res.json({ total: result[0].total || 0 });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
