@@ -713,6 +713,27 @@ app.get('/api/saldo-comissoes/:idUsuario', (req, res) => {
   });
 });
 
+app.get('/api/ranking-doadores', async (req, res) => {
+  try {
+    const [result] = await db.query(`
+      SELECT 
+        usuarios.id,
+        usuarios.nome,
+        SUM(cotas.quantidade) AS cotas
+      FROM usuarios
+      JOIN cotas ON usuarios.id = cotas.id_usuario
+      WHERE cotas.status = 'aprovado'
+      GROUP BY usuarios.id, usuarios.nome
+      ORDER BY cotas DESC
+      LIMIT 10
+    `);
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao buscar ranking." });
+  }
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
