@@ -5,6 +5,21 @@ const bcrypt = require('bcrypt');
 const app = express();
 const db = require('./db');
 
+// 📝 Função para registrar atividades
+function registrarAtividade(tipo, usuario, cotas = null, posicao = null) {
+  db.query(
+    'INSERT INTO atividades_doadores (tipo, usuario, cotas, posicao) VALUES (?, ?, ?, ?)',
+    [tipo, usuario, cotas, posicao],
+    (err) => {
+      if (err) {
+        console.error("Erro ao registrar atividade:", err);
+      } else {
+        console.log(`Atividade registrada: ${tipo} - ${usuario}`);
+      }
+    }
+  );
+}
+
 const PORT = process.env.PORT;
 
 if (!PORT) {
@@ -157,6 +172,10 @@ app.post('/api/cadastrar', async (req, res) => {
         usuario: { nome, email, telefone }
       });
     });
+
+    // 🔔 Registrar atividade de novo doador
+    registrarAtividade('new', nome);
+
   } catch (error) {
     console.error('❌ Erro ao criptografar a senha:', error);
     res.status(500).json({ erro: 'Erro interno ao cadastrar.' });
@@ -263,7 +282,7 @@ app.get('/api/premio-do-dia', (req, res) => {
 // ✅ ROTA PARA CADASTRAR UM NOVO INDICADO
 app.post("/api/indicar", async (req, res) => {
   console.log("✅ Rota de cadastro de indicado chamada");
-  const { nome, email, whatsapp, cpf, senha } = req.body;
+  const { nome, email, whatsapp, cpf, senha, qtd_cotas } = req.body; // Adicionei qtd_cotas aqui
 
   if (!nome || !email || !whatsapp || !senha) {
     return res.status(400).json({ erro: "Campos obrigatórios não preenchidos." });
@@ -285,16 +304,22 @@ app.post("/api/indicar", async (req, res) => {
     const values = [nome, email, whatsapp, cpf, hashed, usuarioLogado];
 
     db.query(sql, values, (err, result) => {
-  if (err) {
-    console.error(`❌ Erro ao cadastrar indicado:`, err);
-    return res.status(500).json({
-      erro: "Erro ao cadastrar indicado.",
-      detalhes: err.sqlMessage || err.message || err
-    });
-  }
+      if (err) {
+        console.error(`❌ Erro ao cadastrar indicado:`, err);
+        return res.status(500).json({
+          erro: "Erro ao cadastrar indicado.",
+          detalhes: err.sqlMessage || err.message || err
+        });
+      }
 
-  res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
-});
+      // ✅ Registrar atividade de doação automaticamente
+      registrarAtividade('donation', nome, qtd_cotas);
+
+      // ✅ Verificar se houve mudança no ranking após a doação
+      verificarMudancaRanking();
+
+      res.status(200).json({ mensagem: "Indicado cadastrado com sucesso!" });
+    });
   } catch (error) {
     console.error("❌ Erro ao criptografar senha:", error);
     res.status(500).json({ erro: "Erro interno." });
@@ -732,6 +757,19 @@ app.get('/api/ranking-doadores', async (req, res) => {
     console.error(error);
     res.status(500).json({ erro: "Erro ao buscar ranking." });
   }
+});
+
+app.get('/api/atividades-recentes', (req, res) => {
+  db.query(
+    'SELECT tipo, usuario, cotas, posicao, DATE_FORMAT(data_hora, "%d %b %Y às %H:%i") as timestamp FROM atividades_doadores ORDER BY data_hora DESC LIMIT 10',
+    (err, results) => {
+      if (err) {
+        console.error("Erro ao buscar atividades:", err);
+        return res.status(500).json({ erro: "Erro no servidor" });
+      }
+      res.json(results);
+    }
+  );
 });
 
 // INICIAR SERVIDOR
