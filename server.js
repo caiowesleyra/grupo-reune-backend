@@ -772,6 +772,82 @@ app.get('/api/atividades-recentes', (req, res) => {
   );
 });
 
+// 🔸 Dependências extras:
+const multer = require('multer');
+const path = require('path');
+
+// Configuração do armazenamento com multer:
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // pasta onde os uploads vão ser salvos
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// 🔸 Criar as tabelas se não existir:
+app.get('/api/criar-tabela-doacoes-voluntarios', (req, res) => {
+  const sql1 = `
+    CREATE TABLE IF NOT EXISTS doacoes_livres (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome_completo VARCHAR(255),
+      valor DECIMAL(10,2),
+      comprovante_url VARCHAR(255),
+      data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`;
+  const sql2 = `
+    CREATE TABLE IF NOT EXISTS voluntarios (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome_completo VARCHAR(255),
+      whatsapp VARCHAR(20),
+      cidade_estado VARCHAR(100),
+      data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`;
+  db.query(sql1);
+  db.query(sql2);
+  res.send("Tabelas criadas ou já existentes!");
+});
+
+// 🔸 Rota para doação com upload:
+app.post('/api/doacoes-livres', upload.single('comprovante'), (req, res) => {
+  const { nome_completo, valor } = req.body;
+  const comprovante_url = req.file ? `/uploads/${req.file.filename}` : null;
+
+  if (!nome_completo || !valor) {
+    return res.status(400).json({ erro: "Nome completo e valor são obrigatórios." });
+  }
+
+  const sql = `INSERT INTO doacoes_livres (nome_completo, valor, comprovante_url) VALUES (?, ?, ?)`;
+  db.query(sql, [nome_completo, valor, comprovante_url], (err, result) => {
+    if (err) {
+      console.error("Erro ao registrar doação:", err);
+      return res.status(500).json({ erro: "Erro ao registrar doação." });
+    }
+    res.status(200).json({ mensagem: "Doação registrada com sucesso!" });
+  });
+});
+
+// 🔸 Rota para registro de voluntário:
+app.post('/api/voluntarios', (req, res) => {
+  const { nome_completo, whatsapp, cidade_estado } = req.body;
+
+  if (!nome_completo || !whatsapp || !cidade_estado) {
+    return res.status(400).json({ erro: "Todos os campos são obrigatórios." });
+  }
+
+  const sql = `INSERT INTO voluntarios (nome_completo, whatsapp, cidade_estado) VALUES (?, ?, ?)`;
+  db.query(sql, [nome_completo, whatsapp, cidade_estado], (err, result) => {
+    if (err) {
+      console.error("Erro ao registrar voluntário:", err);
+      return res.status(500).json({ erro: "Erro ao registrar voluntário." });
+    }
+    res.status(200).json({ mensagem: "Voluntário registrado com sucesso!" });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
