@@ -818,29 +818,32 @@ app.post('/api/doacoes-livres', upload.single('comprovante'), async (req, res) =
   }
 
   try {
-    // Faz upload para o Cloudinary
-    const result = await cloudinary.uploader.upload_stream(
-      { folder: 'doacoes_comprovantes' },
-      (error, uploadResult) => {
-        if (error) {
-          console.error("Erro ao fazer upload para Cloudinary:", error);
-          return res.status(500).json({ erro: "Erro ao enviar comprovante." });
-        }
-
-        const comprovante_url = uploadResult.secure_url;
-
-        // Salva no banco de dados
-        const sql = `INSERT INTO doacoes_livres (nome_completo, valor, comprovante_url) VALUES (?, ?, ?)`;
-        db.query(sql, [nome_completo, valor, comprovante_url], (err, result) => {
-          if (err) {
-            console.error("Erro ao registrar doação:", err);
-            return res.status(500).json({ erro: "Erro ao registrar doação." });
+    // Faz upload para o Cloudinary usando uma Promise
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'doacoes_comprovantes' },
+        (error, result) => {
+          if (result) {
+            resolve(result);
+          } else {
+            reject(error);
           }
-          res.status(200).json({ mensagem: "✅ Doação registrada com sucesso!" });
-        });
+        }
+      );
+      stream.end(file.buffer);
+    });
+
+    const comprovante_url = uploadResult.secure_url;
+
+    // Salva no banco de dados
+    const sql = `INSERT INTO doacoes_livres (nome_completo, valor, comprovante_url) VALUES (?, ?, ?)`;
+    db.query(sql, [nome_completo, valor, comprovante_url], (err, result) => {
+      if (err) {
+        console.error("Erro ao registrar doação:", err);
+        return res.status(500).json({ erro: "Erro ao registrar doação." });
       }
-    );
-    result.end(file.buffer);
+      res.status(200).json({ mensagem: "✅ Doação registrada com sucesso!", url: comprovante_url });
+    });
   } catch (error) {
     console.error("Erro geral:", error);
     res.status(500).json({ erro: "Erro ao processar doação." });
