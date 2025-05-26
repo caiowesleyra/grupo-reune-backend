@@ -868,6 +868,49 @@ app.post('/api/voluntarios', (req, res) => {
   });
 });
 
+// ✅ ROTA PARA BUSCAR HISTÓRICO DE SAQUES DO USUÁRIO
+app.get("/api/saques/:id_usuario", (req, res) => {
+  const { id_usuario } = req.params;
+
+  const sql = `
+    SELECT id, valor, data_solicitacao, status
+    FROM saques
+    WHERE id_usuario = ?
+    ORDER BY data_solicitacao DESC
+  `;
+
+  db.query(sql, [id_usuario], (err, results) => {
+    if (err) {
+      console.error("❌ Erro ao buscar histórico de saques:", err);
+      return res.status(500).json({ erro: "Erro ao buscar histórico de saques." });
+    }
+
+    res.status(200).json({ saques: results });
+  });
+});
+
+app.post("/api/saques", (req, res) => {
+  const { id_usuario, valor, chave_pix, tipo_pix } = req.body;
+
+  if (!id_usuario || !valor || !chave_pix || !tipo_pix) {
+    return res.status(400).json({ erro: "Todos os campos são obrigatórios." });
+  }
+
+  const sql = `
+    INSERT INTO saques (id_usuario, valor, chave_pix, tipo_pix)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [id_usuario, valor, chave_pix, tipo_pix], (err, result) => {
+    if (err) {
+      console.error("❌ Erro ao registrar saque:", err);
+      return res.status(500).json({ erro: "Erro ao registrar saque." });
+    }
+
+    res.status(200).json({ mensagem: "✅ Solicitação de saque registrada com sucesso!" });
+  });
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Servidor rodando na porta ${PORT}`);
