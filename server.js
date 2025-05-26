@@ -13,6 +13,7 @@ cloudinary.config({
   api_secret: 'kInIKilaI0Wc5YRa_AFQTwG64HM'
 });
 const multer = require('multer');
+const path = require('path');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -783,22 +784,6 @@ app.get('/api/atividades-recentes', (req, res) => {
     }
   );
 });
-
-// 🔸 Dependências extras:
-const multer = require('multer');
-const path = require('path');
-
-// Configuração do armazenamento com multer:
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // pasta onde os uploads vão ser salvos
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage });
 
 // 🔸 Criar as tabelas se não existir:
 app.get('/api/criar-tabela-doacoes-voluntarios', (req, res) => {
