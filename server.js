@@ -13,7 +13,6 @@ cloudinary.config({
   api_secret: 'kInIKilaI0Wc5YRa_AFQTwG64HM'
 });
 const multer = require('multer');
-const path = require('path');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -752,18 +751,19 @@ app.get('/api/saldo-comissoes/:idUsuario', (req, res) => {
 
 app.get('/api/ranking-doadores', async (req, res) => {
   try {
-    const [result] = await db.query(`
-      SELECT 
-        usuarios.id,
-        usuarios.nome,
-        SUM(cotas.quantidade) AS cotas
-      FROM usuarios
-      JOIN cotas ON usuarios.id = cotas.id_usuario
-      WHERE cotas.status = 'aprovado'
-      GROUP BY usuarios.id, usuarios.nome
-      ORDER BY cotas DESC
-      LIMIT 10
-    `);
+    const [result] = await db.promise().query(`
+  SELECT 
+    usuarios.id,
+    usuarios.nome,
+    SUM(cotas.quantidade) AS cotas
+  FROM usuarios
+  JOIN cotas ON usuarios.id = cotas.id_usuario
+  WHERE cotas.status = 'aprovado'
+  GROUP BY usuarios.id, usuarios.nome
+  ORDER BY cotas DESC
+  LIMIT 10
+`);
+
     res.json(result);
   } catch (error) {
     console.error(error);
