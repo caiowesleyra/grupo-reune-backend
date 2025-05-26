@@ -5,6 +5,18 @@ const bcrypt = require('bcrypt');
 const app = express();
 const db = require('./db');
 
+// 🔸 Integração com Cloudinary
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: 'dwxex99zy',
+  api_key: '682346214236983',
+  api_secret: 'kInIKilaI0Wc5YRa_AFQTwG64HM'
+});
+const multer = require('multer');
+const path = require('path');
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 // 📝 Função para registrar atividades
 function registrarAtividade(tipo, usuario, cotas = null, posicao = null) {
   db.query(
@@ -812,22 +824,42 @@ app.get('/api/criar-tabela-doacoes-voluntarios', (req, res) => {
 });
 
 // 🔸 Rota para doação com upload:
-app.post('/api/doacoes-livres', upload.single('comprovante'), (req, res) => {
+app.post('/api/doacoes-livres', upload.single('comprovante'), async (req, res) => {
   const { nome_completo, valor } = req.body;
-  const comprovante_url = req.file ? `/uploads/${req.file.filename}` : null;
+  const file = req.file;
 
-  if (!nome_completo || !valor) {
-    return res.status(400).json({ erro: "Nome completo e valor são obrigatórios." });
+  if (!nome_completo || !valor || !file) {
+    return res.status(400).json({ erro: "Nome, valor e comprovante são obrigatórios." });
   }
 
-  const sql = `INSERT INTO doacoes_livres (nome_completo, valor, comprovante_url) VALUES (?, ?, ?)`;
-  db.query(sql, [nome_completo, valor, comprovante_url], (err, result) => {
-    if (err) {
-      console.error("Erro ao registrar doação:", err);
-      return res.status(500).json({ erro: "Erro ao registrar doação." });
-    }
-    res.status(200).json({ mensagem: "Doação registrada com sucesso!" });
-  });
+  try {
+    // Faz upload para o Cloudinary
+    const result = await cloudinary.uploader.upload_stream(
+      { folder: 'doacoes_comprovantes' },
+      (error, uploadResult) => {
+        if (error) {
+          console.error("Erro ao fazer upload para Cloudinary:", error);
+          return res.status(500).json({ erro: "Erro ao enviar comprovante." });
+        }
+
+        const comprovante_url = uploadResult.secure_url;
+
+        // Salva no banco de dados
+        const sql = `INSERT INTO doacoes_livres (nome_completo, valor, comprovante_url) VALUES (?, ?, ?)`;
+        db.query(sql, [nome_completo, valor, comprovante_url], (err, result) => {
+          if (err) {
+            console.error("Erro ao registrar doação:", err);
+            return res.status(500).json({ erro: "Erro ao registrar doação." });
+          }
+          res.status(200).json({ mensagem: "✅ Doação registrada com sucesso!" });
+        });
+      }
+    );
+    result.end(file.buffer);
+  } catch (error) {
+    console.error("Erro geral:", error);
+    res.status(500).json({ erro: "Erro ao processar doação." });
+  }
 });
 
 // 🔸 Rota para registro de voluntário:
